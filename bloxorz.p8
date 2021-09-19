@@ -1,8 +1,10 @@
 pico-8 cartridge // http://www.pico-8.com
 version 30
 __lua__
+#include tiles.lua
 #include point.lua
 #include sprites.lua
+#include block_animations.lua
 #include block.lua
 #include level.lua
 #include game.lua

@@ -1,8 +1,3 @@
-x0 = -2
-y0 = 15
-map_width_tiles = 16
-map_height_tiles = 10
-
 sprite_type = {
 	start = 0b0001,
 	finish = 0b0010,
@@ -19,14 +14,6 @@ sprite_type = {
 	portal_half = 0b1101,
 	portal_target=0b1110,
 }
-
-function uvtox(u, v)
- return x0+7*u+2*v
-end
-
-function uvtoy(u, v)
- return y0+2*(16-u)+6*v
-end
 
 function get_sprite_type(sprite)
 	return fget(sprite) & 0b1111

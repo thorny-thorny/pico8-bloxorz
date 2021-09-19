@@ -92,7 +92,7 @@ function level_enter_portal(self, sprite)
 		end
 	end
 
-	block_split(self.block, point1.u, point1.v, point2.u, point2.v)
+	self.block:split(self.block, point1.u, point1.v, point2.u, point2.v)
 end
 
 function level_platform_state(self, sprite)
@@ -113,15 +113,15 @@ function level_platform_state(self, sprite)
 end
 
 function level_update(self)
-	block_update(self.block)
+	self.block:update()
 	if self.block.animation then
 		return
 	end
 
-	if block_stands_on(self.block, self.finish.u, self.finish.v, true) then
+	if self.block:stands_on(self.finish, true) then
 		self.finished = true
 	else
-		local points = block_get_points(self.block)
+		local points = self.block:get_points()
 		local died = false
 		local hole = nil
 		for i = 1, #points do
@@ -195,7 +195,7 @@ function level_draw(self)
  	end
  end
 
- block_draw(self.block)
+ self.block:draw()
 
  for u = map_width_tiles - 1, 0, -1 do
   for v = 0, map_height_tiles - 1 do
@@ -228,7 +228,8 @@ function level_draw_tile(self, u, v)
 		end
 
 		if sprite > 0 then
-		 	spr(sprite, uvtox(u, v), uvtoy(u, v))
+			local point = tile_point_to_xy(make_uv_point(u, v))
+		 	spr(sprite, point.x, point.y)
 		end
 	end
 end
