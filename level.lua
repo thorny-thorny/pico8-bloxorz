@@ -26,6 +26,7 @@ function level_create(level_number)
 		finished = false,
 		platforms = { 0, 0, 0, 0 },
 		hole = nil,
+		waiting_falling_animaiton = false,
 		press_button = level_press_button,
 		enter_portal = level_enter_portal,
 		platform_state = level_platform_state,
@@ -113,8 +114,8 @@ function level_platform_state(self, sprite)
 end
 
 function level_update(self)
-	self.block:update()
-	if self.block.animation then
+	local updated = self.block:update()
+	if not updated then
 		return
 	end
 
@@ -123,34 +124,21 @@ function level_update(self)
 	else
 		local points = self.block:get_points()
 		local died = false
-		local hole = nil
+		local hole_points = {}
 		for i = 1, #points do
 			local sprite = mget(self.map_offset.u + points[i].u, self.map_offset.v + points[i].v)
-			if
-				sprite == 0 or
-				not points[i]:in_bounds(0, 0, map_width_tiles - 1, map_height_tiles - 1)
-			then
+			local empty_tile = sprite == 0
+			local out_of_bounds = not points[i]:in_bounds(0, 0, map_width_tiles - 1, map_height_tiles - 1)
+			local fragile_tile = #points == 1 and sprite_is_fragile(sprite)
+			local off_platform = sprite_is_platform(sprite) and self:platform_state(sprite) < 0
+
+			if empty_tile or out_of_bounds or fragile_tile or off_platform then
 				died = true
-				hole = points[i]
-			elseif
-				#points == 1 and
-				sprite_is_fragile(sprite)
-			then
-				died = true
-				hole = points[i]
-			elseif
-				sprite_is_platform(sprite) and
-				self:platform_state(sprite) < 0
-			then
-				died = true
-				hole = points[i]
-			elseif
-				#points == 1 and
-				sprite_is_portal(sprite)
-			then
-			 if self.block.updated then
-				self:enter_portal(sprite)
-				end
+				hole_points[#hole_points + 1] = points[i]
+			elseif #points == 1 and sprite_is_portal(sprite) then
+				-- if self.block.updated then
+				-- 	self:enter_portal(sprite)
+				-- end
 			elseif
 				sprite_is_circle_button(sprite) or
 				(
@@ -158,25 +146,33 @@ function level_update(self)
 					#points == 1
 				)
 			then
-				if self.block.updated then
 					self:press_button(sprite)
-				end
 			end
 		end
 
-		if died and not self.block.did_animated_fall then
-			self.hole = hole
-			self.block:animate_falling(hole)
-			return
-		end
-
 		if died then
-			self.block = block_create(
-				self.start.u,
-				self.start.v
-			)
-			self.platforms = { 0, 0, 0, 0 }
-			self.hole = nil
+			if not self.waiting_falling_animaiton then
+				local hole_side = block_side.z
+				if #hole_points > 1 then
+					if hole_points[1].u == hole_points[2].u then
+						hole_side = block_side.v
+					else
+						hole_side = block_side.u
+					end
+				end
+
+				self.hole = hole_points[1]
+				self.waiting_falling_animaiton = true
+				self.block:animate_falling(hole_points[1], hole_side)
+			else
+				self.hole = nil
+				self.waiting_falling_animaiton = false
+				self.block = block_create(
+					self.start.u,
+					self.start.v
+				)
+				self.platforms = { 0, 0, 0, 0 }
+			end
 		end
 	end
 end

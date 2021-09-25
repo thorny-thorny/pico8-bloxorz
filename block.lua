@@ -6,7 +6,6 @@ function block_create(u, v)
 		prev_side = nil,
 		split_point = nil,
 		split_active = false,
-		updated = false,
 		did_animated_fall = false,
 		animate_falling = block_animate_falling,
 		update = block_update,
@@ -20,46 +19,37 @@ function block_create(u, v)
 	return block
 end
 
-function block_animate_falling(self, hole)
-	-- local du = 0
-	-- local dv = 0
-	-- local same = self.side == self.prev_side
+function block_animate_falling(self, hole, hole_side)
+	local d = make_uv_point(0, 0)
 
-	-- if not same then
-	-- 	if hole.u > self.u then
-	-- 		du = 1
-	-- 	elseif hole.v > self.v then
-	-- 		dv = 1
-	-- 	elseif
-	-- 		hole.u == self.u or
-	-- 		hole.v == self.v
-	-- 	then
-	-- 		if self.u == self.prev_u then
-	-- 			self.v += 1
-	-- 			dv = -1
-	-- 		else
-	-- 			self.u += 1
-	-- 			du = -1
-	-- 		end
-	-- 	end
-	-- end
+	if self.side ~= block_side.z and hole_side == block_side.z then
+		if hole.u > self.point.u then
+			d.u = 1
+		elseif hole.v > self.point.v then
+			d.v = 1
+		elseif
+			hole.u == self.point.u or
+			hole.v == self.point.v
+		then
+			if self.point.u == self.prev_point.u then
+				self.point.v += 1
+				d.v = -1
+			else
+				self.point.u += 1
+				d.u = -1
+			end
+		end
 
-	-- self.animation = {
-	-- 	cycles_left = falling_animation_delay,
-	-- 	delay_left = falling_animation_delay,
-	-- 	frame = 0,
-	-- 	from_side = self.side,
-	-- 	from_u = self.u,
-	-- 	from_v = self.v,
-	-- 	falling = true,
-	-- }
-	-- self.side = block_side.z
-	-- self.point.u += du
-	-- self.point.v += dv
+		local new_point = self.point:by_adding_point(d)
+		local new_side = block_side.z
 
-	-- if same then
-	-- 	self.animation.cycles_left = 100
-	-- end
+		self.animation = make_block_spin_fall_animation(self.point, self.side, new_point, new_side)
+
+		self.point = new_point
+		self.side = new_side
+	else
+		-- TODO
+	end
 end
 
 function block_get_points(self)
@@ -106,57 +96,18 @@ function block_update(self)
 	if self.animation ~= nil then
 		local animating = self.animation:update()
 		if animating then
-			return
+			return false
 		else
 			self.animation = nil
-			self.updated = true
-			return
+			return true
 		end
 	end
 
-
-	-- if self.animation != nil then
-	-- 	if self.animation.frame > 30 then
-	-- 		self.did_animated_fall = true
-	-- 		self.animation = nil
-	-- 		return
-	-- 	elseif self.animation.cycles_left > 0 then
-	-- 		self.animation.cycles_left -= 1
-	-- 		self.animation.frame += 1
-	-- 		return
-	-- 	elseif self.animation.delay_left != nil then
-	-- 		if self.animation.delay_left > 0 then
-	-- 			self.animation.delay_left -= 1
-	-- 			self.animation.frame +=1
-	-- 			return
-	-- 		end
-
-	-- 		local prev_side = self.animation.from_side
-	-- 		local du = self.u - self.animation.from_u
-	-- 		local dv = self.v - self.animation.from_v
-	-- 		self.animation = {
-	-- 			cycles_left = falling_animation_delay,
-	-- 			delay_left = falling_animation_delay,
-	-- 			frame = block.animation.frame,
-	-- 			from_side = block.side,
-	-- 			from_u = block.u-du,
-	-- 			from_v = block.v-dv,
-	-- 			falling = true,
-	-- 		}
-	-- 		self.side = prev_side
-	-- 		return
-	-- 	elseif self.animation.falling == nil then
-	-- 		self.animation = nil
-	-- 		return
-	-- 	end
-	-- end
-
 	local d = make_uv_point(0, 0)
 	local new_side = self.side
-	self.updated = false
 
 	if btnp(⬅️) then
-		d.u = -1 
+		d.u = -1
 	elseif btnp(➡️) then
 		d.u = 1
 	elseif btnp(⬆️) then
@@ -209,8 +160,7 @@ function block_update(self)
 		self.point = point:by_adding_point(d)
 		self.side = new_side
 
-		-- self.animation = make_block_transition_animation(self.prev_point, self.prev_side, self.point, self.side)
-		self.animation = make_block_fall_animation(self.prev_point, self.prev_side, self.point, self.side)
+		self.animation = make_block_transition_animation(self.prev_point, self.prev_side, self.point, self.side)
 	end
 
 	-- if self.split_point != nil then
@@ -230,6 +180,8 @@ function block_update(self)
 	-- 		end
 	-- 	end
 	-- end
+
+	return false
 end
 
 function block_subdraw(self, draw_split)
@@ -243,7 +195,7 @@ function block_subdraw(self, draw_split)
 	local sprite = nil
 	local thin = false
 
-	if self.animation ~= nil then
+	if self.animation ~= nil and self.animation ~= false then
 		local state = self.animation:get_state()
 		if state.side ~= nil then
 			side = state.side
@@ -257,38 +209,6 @@ function block_subdraw(self, draw_split)
 			p:add_point(state.d)
 		end
 	end
-
-	-- if
-	-- 	self.animation ~= nil and
-	-- 	self.animation.falling ~= nil and
- 	-- 	self.animation.from_side ~= self.side
-	-- then
-	-- 	local dup = make_xy_point(uvtox(1, 0) - uvtox(0, 0), uvtoy(1, 0) - uvtoy(0, 0))
-	-- 	local dvp = make_xy_point(uvtox(0, 1) - uvtox(0, 0), uvtoy(0, 1) - uvtoy(0, 0))
-	-- 	local d = make_uv_point(self.u - self.animation.from_u, self.v - self.animation.from_v)
-
-	-- 	if self.animation.cycles_left == 0 then
-	-- 		if self.side == block_side.u then
-	-- 			p:add(-dup.x / 2, 0)
-	-- 		elseif self.side == block_side.v then
-	-- 			p:add(0, -dvp.y/2)
-	-- 		end
-	-- 	end
-
-	-- 	if self.animation.cycles_left > 0 then
-	-- 		if self.side == block_side.z then
-	-- 			p:add(dup.x * d.u + dvp.x * d.v, dup.y * d.u + dvp.y * d.v)
-	-- 		end
-	-- 		if self.side == block_side.u and d.u < 0 then
-	-- 			p:add(-dup.x, 0)
-	-- 		end
-	-- 		if self.side == block_side.v and d.v < 0 then
- 	-- 			p:add(0, -dvp.y)
-	-- 		end
-	-- 	end
-
-	-- 	p:add(0, self.animation.frame * 4)
-	-- end
 
 	if sprite == nil then
 		if self.split_point ~= nil then

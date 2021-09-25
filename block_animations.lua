@@ -16,7 +16,6 @@ function block_transition(from_point, from_side, to_point, to_side)
   local v_to_z = to_side == block_side.z and from_side == block_side.v
   local v_to_v = to_side == block_side.v and from_side == block_side.v
   local u_to_u = to_side == block_side.u and from_side == block_side.u
-  local z_to_z = to_side == block_side.z and from_side == block_side.z
 
   local u_greater = to_point.u > from_point.u
   local v_greater = to_point.v > from_point.v
@@ -71,7 +70,7 @@ function make_block_transition_animation(from_point, from_side, to_point, to_sid
     from_side = from_side,
     to_point = to_point,
     to_side = to_side,
-    frames_left = 1,
+    frames_left = 2,
     update = block_transition_animation_update,
     get_state = block_transition_animation_get_state,
   }
@@ -89,79 +88,78 @@ function block_transition_animation_update(self)
 end
 
 function block_transition_animation_get_state(self)
-  return block_transition(self.from_point, self.from_side, self.to_point, self.to_side)
+  if self.frames_left == 1 then
+    return {}
+  else
+    return block_transition(self.from_point, self.from_side, self.to_point, self.to_side)
+  end
 end
 
-function make_block_fall_animation(from_point, from_side, to_point, to_side)
+function make_block_spin_fall_animation(from_point, from_side, to_point, to_side)
   local animation = {
     from_point = from_point,
     from_side = from_side,
     to_point = to_point,
     to_side = to_side,
-    frames_left = 1,
+    frames_left = 30,
     frame = 0,
-    update = block_fall_animation_update,
-    get_state = block_fall_animation_get_state,
+    update = block_spin_fall_animation_update,
+    get_state = block_spin_fall_animation_get_state,
   }
 
   return animation
 end
 
-function block_fall_animation_update(self)
-  -- if self.frames_left == 0 then
-  --   return false
-  -- else
-  --   self.frames_left -= 1
-  --   return true
-  -- end
-  self.frame += 1
-  return true
+function block_spin_fall_animation_update(self)
+  if self.frames_left == 0 then
+    return false
+  else
+    self.frames_left -= 1
+    self.frame += 1
+    return true
+  end
 end
 
-function block_fall_animation_get_state(self)
-  local step = flr(self.frame / 15) % 4
+function block_spin_fall_animation_get_state(self)
+  local step = flr(self.frame / 2) % 4
   local zero = tile_point_to_xy(make_uv_point(0, 0))
   local du_xy = tile_point_to_xy(make_uv_point(1, 0))
   local dv_xy = tile_point_to_xy(make_uv_point(0, 1))
   local dup = make_xy_point(du_xy.x - zero.x, du_xy.y - zero.y)
   local dvp = make_xy_point(dv_xy.x - zero.x, dv_xy.y - zero.y)
-    -- local d = make_uv_point(self.u - self.animation.from_u, self.v - self.animation.from_v)
+  local dd = make_uv_point(self.to_point.u - self.from_point.u, self.to_point.v - self.from_point.v)
   local d = make_xy_point(0, 0)
 
-	-- 	if self.animation.cycles_left == 0 then
-	-- 		if self.side == block_side.u then
-	-- 			p:add(-dup.x / 2, 0)
-	-- 		elseif self.side == block_side.v then
-	-- 			p:add(0, -dvp.y/2)
-	-- 		end
-	-- 	end
-
-	-- 	if self.animation.cycles_left > 0 then
-	-- 		if self.side == block_side.z then
-	-- 			p:add(dup.x * d.u + dvp.x * d.v, dup.y * d.u + dvp.y * d.v)
-	-- 		end
-	-- 		if self.side == block_side.u and d.u < 0 then
-	-- 			p:add(-dup.x, 0)
-	-- 		end
-	-- 		if self.side == block_side.v and d.v < 0 then
- 	-- 			p:add(0, -dvp.y)
-	-- 		end
-	-- 	end
-
-	-- 	p:add(0, self.animation.frame * 4)
-
+  local state
+  -- TODO: remove math, harcode offset
   if step == 0 then
-    return block_transition(self.from_point, self.from_side, self.to_point, self.to_side)
+    state = block_transition(self.from_point, self.from_side, self.to_point, self.to_side)
+    state.d:add(dup.x * dd.u + dvp.x * dd.v, dup.y * dd.u + dvp.y * dd.v)
   elseif step == 1 then
-    d:add(-dup.x / 2, 0)
-    return {
+    state = {
       d = d,
     }
   elseif step == 2 then
-    return block_transition(self.from_point, self.to_side, self.to_point, self.from_side)
+    state = block_transition(self.from_point, self.to_side, self.to_point, self.from_side)
+    if self.from_side == block_side.u and dd.u < 0 then
+      state.d:add(-dup.x, 0)
+    end
+    if self.from_side == block_side.v and dd.v < 0 then
+      state.d:add(0, -dvp.y)
+    end
   elseif step == 3 then
-    return {
+    if self.from_side == block_side.u then
+      d:add(-dup.x / 2, 0)
+    elseif self.side == block_side.v then
+      d:add(0, -dvp.y / 2)
+    end
+    state = {
+      d = d,
       side = self.from_side,
     }
   end
+
+  state.d:add(0, self.frame * 4)
+
+  return state
 end
