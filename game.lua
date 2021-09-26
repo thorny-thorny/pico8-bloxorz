@@ -1,6 +1,6 @@
 function game_create()
 	local game = {
-		level_number = 1,
+		level_number = 0,
 		levels_total = 7,
 		update = game_update,
 		draw = game_draw,
@@ -12,8 +12,8 @@ function game_create()
 end
 
 function game_update(self)
-	self.level:update()
-	if self.level.finished then
+	local finished = self.level:update()
+	if finished then
 		local new_level_number = self.level_number + 1
 		if new_level_number > self.levels_total then
 			new_level_number = 1

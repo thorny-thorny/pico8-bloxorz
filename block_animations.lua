@@ -88,11 +88,63 @@ function block_transition_animation_update(self)
 end
 
 function block_transition_animation_get_state(self)
-  if self.frames_left == 1 then
+  if self.frames_left == 0 then
     return {}
   else
     return block_transition(self.from_point, self.from_side, self.to_point, self.to_side)
   end
+end
+
+function make_block_fall_animation(point, side, initial_offset, short)
+  local frames_total = 30
+  if initial_offset then
+    frames_total = 10
+  elseif short then
+    frames_total = 30
+  end
+
+  local animation = {
+    point = point,
+    side = side,
+    initial_offset = initial_offset,
+    frames_total = frames_total,
+    short = short,
+    frame = 0,
+    update = block_fall_animation_update,
+    get_state = block_fall_animation_get_state,
+  }
+
+  return animation
+end
+
+function block_fall_animation_update(self)
+  self.frame += 1
+  if self.frame >= self.frames_total then
+    return false
+  else
+    return true
+  end
+end
+
+function block_fall_animation_get_state(self)
+  local d = make_xy_point(0, 0)
+  if self.initial_offset then
+    d:add(0, -(self.frames_total - self.frame) * 8)
+  else
+    if self.short then
+      if self.frame >= 5 then
+        d:add(0, 100)
+      else
+        d:add(0, self.frame * 2)
+      end
+    else
+      d:add(0, self.frame * 4)
+    end
+  end
+
+  return {
+    d = d,
+  }
 end
 
 function make_block_spin_fall_animation(from_point, from_side, to_point, to_side)

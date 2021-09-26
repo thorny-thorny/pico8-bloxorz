@@ -7,7 +7,9 @@ function block_create(u, v)
 		split_point = nil,
 		split_active = false,
 		did_animated_fall = false,
+		animate_start = block_animate_start,
 		animate_falling = block_animate_falling,
+		animate_finish = block_animate_finish,
 		update = block_update,
 		draw = block_draw,
 		subdraw = block_subdraw,
@@ -17,6 +19,14 @@ function block_create(u, v)
 	}
 
 	return block
+end
+
+function block_animate_start(self)
+	self.animation = make_block_fall_animation(self.point, self.side, true)
+end
+
+function block_animate_finish(self)
+	self.animation = make_block_fall_animation(self.point, self.side, false, true)
 end
 
 function block_animate_falling(self, hole, hole_side)
@@ -48,7 +58,7 @@ function block_animate_falling(self, hole, hole_side)
 		self.point = new_point
 		self.side = new_side
 	else
-		-- TODO
+		self.animation = make_block_fall_animation(self.point, self.side, false)
 	end
 end
 

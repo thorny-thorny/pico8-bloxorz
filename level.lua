@@ -22,11 +22,8 @@ function level_create(level_number)
 		map_offset = map_offset,
 		start = start,
 		finish = finish,
-		block = block_create(start.u, start.v),
 		finished = false,
-		platforms = { 0, 0, 0, 0 },
-		hole = nil,
-		waiting_falling_animaiton = false,
+		reset = level_reset,
 		press_button = level_press_button,
 		enter_portal = level_enter_portal,
 		platform_state = level_platform_state,
@@ -35,7 +32,20 @@ function level_create(level_number)
 		draw_tile = level_draw_tile,
 	}
 
+	level:reset()
+
 	return level
+end
+
+function level_reset(self)
+	self.hole = nil
+	self.waiting_for_animaiton = false
+	self.platforms = { 0, 0, 0, 0 }
+	self.block = block_create(
+		self.start.u,
+		self.start.v
+	)
+	self.block:animate_start()
 end
 
 function level_press_button(self, sprite)
@@ -116,65 +126,68 @@ end
 function level_update(self)
 	local updated = self.block:update()
 	if not updated then
-		return
+		return false
 	end
 
-	if self.block:stands_on(self.finish, true) then
-		self.finished = true
-	else
-		local points = self.block:get_points()
-		local died = false
-		local hole_points = {}
-		for i = 1, #points do
-			local sprite = mget(self.map_offset.u + points[i].u, self.map_offset.v + points[i].v)
-			local empty_tile = sprite == 0
-			local out_of_bounds = not points[i]:in_bounds(0, 0, map_width_tiles - 1, map_height_tiles - 1)
-			local fragile_tile = #points == 1 and sprite_is_fragile(sprite)
-			local off_platform = sprite_is_platform(sprite) and self:platform_state(sprite) < 0
+	local points = self.block:get_points()
+	local died = false
+	local finished = false
+	local hole_points = {}
+	for i = 1, #points do
+		local sprite = mget(self.map_offset.u + points[i].u, self.map_offset.v + points[i].v)
+		local empty_tile = sprite == 0
+		local out_of_bounds = not points[i]:in_bounds(0, 0, map_width_tiles - 1, map_height_tiles - 1)
+		local fragile_tile = #points == 1 and sprite_is_fragile(sprite)
+		local off_platform = sprite_is_platform(sprite) and self:platform_state(sprite) < 0
 
-			if empty_tile or out_of_bounds or fragile_tile or off_platform then
-				died = true
-				hole_points[#hole_points + 1] = points[i]
-			elseif #points == 1 and sprite_is_portal(sprite) then
-				-- if self.block.updated then
-				-- 	self:enter_portal(sprite)
-				-- end
-			elseif
-				sprite_is_circle_button(sprite) or
-				(
-					sprite_is_cross_button(sprite) and
-					#points == 1
-				)
-			then
-					self:press_button(sprite)
-			end
+		if empty_tile or out_of_bounds or fragile_tile or off_platform then
+			died = true
+			hole_points[#hole_points + 1] = points[i]
+		elseif #points == 1 and self.finish:equals(points[i]) then
+			finished = true
+		-- elseif #points == 1 and sprite_is_portal(sprite) then
+			-- if self.block.updated then
+			-- 	self:enter_portal(sprite)
+			-- end
+		elseif
+			sprite_is_circle_button(sprite) or
+			(
+				sprite_is_cross_button(sprite) and
+				#points == 1
+			)
+		then
+				self:press_button(sprite)
 		end
+	end
 
-		if died then
-			if not self.waiting_falling_animaiton then
-				local hole_side = block_side.z
-				if #hole_points > 1 then
-					if hole_points[1].u == hole_points[2].u then
-						hole_side = block_side.v
-					else
-						hole_side = block_side.u
-					end
+	if finished then
+		if not self.waiting_for_animaiton then
+			self.waiting_for_animaiton = true
+			self.hole = self.block.point
+			self.block:animate_finish()
+		else
+			return true
+		end
+	elseif died then
+		if not self.waiting_for_animaiton then
+			local hole_side = block_side.z
+			if #hole_points > 1 then
+				if hole_points[1].u == hole_points[2].u then
+					hole_side = block_side.v
+				else
+					hole_side = block_side.u
 				end
-
-				self.hole = hole_points[1]
-				self.waiting_falling_animaiton = true
-				self.block:animate_falling(hole_points[1], hole_side)
-			else
-				self.hole = nil
-				self.waiting_falling_animaiton = false
-				self.block = block_create(
-					self.start.u,
-					self.start.v
-				)
-				self.platforms = { 0, 0, 0, 0 }
 			end
+
+			self.hole = hole_points[1]
+			self.waiting_for_animaiton = true
+			self.block:animate_falling(hole_points[1], hole_side)
+		else
+			self:reset()
 		end
 	end
+
+	return false
 end
 
 function level_draw(self)
@@ -185,7 +198,7 @@ function level_draw(self)
 
  for u = map_width_tiles - 1, 0, -1 do
   for v = 0, map_height_tiles - 1 do
-  	if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) then
+  	if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) or (u == hole.u and v == hole.v) then
   		self:draw_tile(u, v)
   	end
  	end
@@ -195,7 +208,7 @@ function level_draw(self)
 
  for u = map_width_tiles - 1, 0, -1 do
   for v = 0, map_height_tiles - 1 do
-  	if (u > hole.u and v > hole.v) or (u <= hole.u and v >= hole.v) then
+  	if ((u > hole.u and v > hole.v) or (u <= hole.u and v >= hole.v)) and not (u == hole.u and v == hole.v) then
   		self:draw_tile(u, v)
   	end
  	end
