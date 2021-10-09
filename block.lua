@@ -37,16 +37,13 @@ function block_animate_falling(self, hole, hole_side)
 			d.u = 1
 		elseif hole.v > self.point.v then
 			d.v = 1
-		elseif
-			hole.u == self.point.u or
-			hole.v == self.point.v
-		then
-			if self.point.u == self.prev_point.u then
-				self.point.v += 1
-				d.v = -1
-			else
+		else
+			if self.side == block_side.u then
 				self.point.u += 1
 				d.u = -1
+			else
+				self.point.v += 1
+				d.v = -1
 			end
 		end
 
@@ -64,7 +61,7 @@ end
 
 function block_get_points(self)
 	local points = {}
-	points[1] = self.point
+	points[1] = make_uv_point(self.point.u, self.point.v)
 
 	if self.split_point ~= nil then
 		points[2] = split_point
@@ -109,6 +106,7 @@ function block_update(self)
 			return false
 		else
 			self.animation = nil
+			-- sfx(0)
 			return true
 		end
 	end

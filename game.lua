@@ -27,4 +27,5 @@ function game_draw(self)
 	cls()
 	map(0, 48, 0, 0, 16, 16)
 	self.level:draw()
+	dbg:draw()
 end
