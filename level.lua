@@ -131,16 +131,23 @@ function level_update(self)
 
 	local points = self.block:get_points()
 	local died = false
+	local got_sfx = false
 	local finished = false
 	local hole_points = {}
 	for i = 1, #points do
 		local sprite = mget(self.map_offset.u + points[i].u, self.map_offset.v + points[i].v)
 		local empty_tile = sprite == 0
 		local out_of_bounds = not points[i]:in_bounds(0, 0, map_width_tiles - 1, map_height_tiles - 1)
-		local fragile_tile = #points == 1 and sprite_is_fragile(sprite)
+		local fragile_tile = sprite_is_fragile(sprite)
+		local fragile_breaks = #points == 1 and fragile_tile
 		local off_platform = sprite_is_platform(sprite) and self:platform_state(sprite) < 0
 
-		if empty_tile or out_of_bounds or fragile_tile or off_platform then
+		if fragile_tile and not got_sfx then
+			sfx(sounds.fragile)
+			got_sfx = true
+		end
+
+		if empty_tile or out_of_bounds or fragile_breaks or off_platform then
 			died = true
 			hole_points[#hole_points + 1] = points[i]
 		elseif #points == 1 and self.finish:equals(points[i]) then
@@ -157,6 +164,8 @@ function level_update(self)
 			)
 		then
 				self:press_button(sprite)
+				sfx(sounds.press)
+				got_sfx = true
 		end
 	end
 
@@ -165,6 +174,7 @@ function level_update(self)
 			self.waiting_for_animaiton = true
 			self.hole = self.block.point
 			self.block:animate_finish()
+			sfx(sounds.slide)
 		else
 			return true
 		end
@@ -177,14 +187,21 @@ function level_update(self)
 				else
 					hole_side = block_side.u
 				end
+			else
+				if self.block.side ~= block_side.z then
+					sfx(sounds.hit)
+				end
 			end
 
 			self.hole = hole_points[1]
 			self.waiting_for_animaiton = true
 			self.block:animate_falling(hole_points[1], hole_side)
 		else
+			sfx(sounds.death)
 			self:reset()
 		end
+	elseif not got_sfx then
+		sfx(sounds.hit)
 	end
 
 	return false
@@ -198,8 +215,20 @@ function level_draw(self)
 
  for u = map_width_tiles - 1, 0, -1 do
   for v = 0, map_height_tiles - 1 do
-  	if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) or (u == hole.u and v == hole.v) then
-  		self:draw_tile(u, v)
+		local is_hole = u == hole.u and v == hole.v
+  	if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) or is_hole then
+			local d = nil
+			if is_hole then
+				local sprite = mget(self.map_offset.u + hole.u, self.map_offset.v + hole.v)
+				if sprite_is_fragile(sprite) and self.waiting_for_animaiton and self.block.side == block_side.z then
+					local state = self.block.animation:get_state()
+					if state.d ~= nil then
+						d = make_xy_point(0, state.d.y)
+					end
+				end
+			end
+
+			self:draw_tile(u, v, d)
   	end
  	end
  end
@@ -215,7 +244,7 @@ function level_draw(self)
  end
 end
 
-function level_draw_tile(self, u, v)
+function level_draw_tile(self, u, v, d)
 	local sprite = mget(self.map_offset.u + u, self.map_offset.v + v)
 	if sprite > 0 then
 		if sprite_is_start(sprite) then
@@ -238,6 +267,9 @@ function level_draw_tile(self, u, v)
 
 		if sprite > 0 then
 			local point = tile_point_to_xy(make_uv_point(u, v))
+			if d ~= nil then
+				point:add_point(d)
+			end
 		 	spr(sprite, point.x, point.y)
 		end
 	end

@@ -106,7 +106,6 @@ function block_update(self)
 			return false
 		else
 			self.animation = nil
-			-- sfx(0)
 			return true
 		end
 	end
