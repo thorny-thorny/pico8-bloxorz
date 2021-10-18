@@ -41,6 +41,7 @@ function level_reset(self)
 	self.hole = nil
 	self.waiting_for_animaiton = false
 	self.platforms = { 0, 0, 0, 0 }
+	self.platform_animation = nil
 	self.block = block_create(
 		self.start.u,
 		self.start.v
@@ -73,6 +74,7 @@ function level_press_button(self, sprite)
 	end
 
 	self.platforms[index] = state
+	self.platform_animation = make_platform_animation(index)
 end
 
 function level_enter_portal(self, sprite)
@@ -124,8 +126,15 @@ function level_platform_state(self, sprite)
 end
 
 function level_update(self)
-	local updated = self.block:update()
-	if not updated then
+	if self.platform_animation ~= nil then
+		local platform_animation_updated = self.platform_animation:update()
+		if not platform_animation_updated then
+			self.platform_animation = nil
+		end
+	end
+
+	local block_updated = self.block:update()
+	if not block_updated then
 		return false
 	end
 
@@ -254,10 +263,21 @@ function level_draw_tile(self, u, v, d)
 		elseif sprite_is_cross_button(sprite) then
 			sprite = 3
 		elseif sprite_is_platform(sprite) then
-			if self:platform_state(sprite) > 0 then
-				sprite = 4
-			else
-				sprite = 0
+			local overriden = false
+			if self.platform_animation ~= nil then
+				local new_sprite = self.platform_animation:override_sprite(sprite, self:platform_state(sprite))
+				if new_sprite ~= nil then
+					overriden = true
+					sprite = new_sprite
+				end
+			end
+
+			if not overriden then
+				if self:platform_state(sprite) > 0 then
+					sprite = 4
+				else
+					sprite = 0
+				end
 			end
 		elseif sprite_is_portal(sprite) then
 			sprite = 7
