@@ -4,4 +4,5 @@ local sounds = {
   death = 2,
   press = 3,
   fragile = 4,
+  join = 2,
 }

@@ -16,6 +16,7 @@ function block_create(u, v)
 		stands_on = block_stands_on,
 		get_points = block_get_points,
 		split = block_split,
+		try_join = block_try_join,
 	}
 
 	return block
@@ -64,7 +65,7 @@ function block_get_points(self)
 	points[1] = make_uv_point(self.point.u, self.point.v)
 
 	if self.split_point ~= nil then
-		points[2] = split_point
+		points[2] = self.split_point
 	elseif self.side == block_side.u then
 		points[2] = self.point:by_adding_u(1)
 	elseif self.side == block_side.v then
@@ -76,7 +77,7 @@ end
 
 function block_stands_on(self, point, whole)
 	local points = self:get_points()
-	if whole and #points != 1 then
+	if whole and #points ~= 1 then
 		return false
 	end
 
@@ -97,6 +98,29 @@ function block_split(self, u1, v1, u2, v2)
 	-- self.v = v1
 	-- self.u2 = u2
 	-- self.v2 = v2
+end
+
+function block_try_join(self)
+	if self.split_point ~= nil then
+		local touches_u = self.point:touches_point_by_u(self.split_point)
+		local touches_v = self.point:touches_point_by_v(self.split_point)
+
+		if touches_u or touches_v then
+			if touches_u then
+				self.side = block_side.u
+				self.point = make_uv_point(min(self.point.u, self.split_point.u), self.point.v)
+			else
+				self.side = block_side.v
+				self.point = make_uv_point(self.point.u, min(self.point.v, self.split_point.v))
+			end
+
+			self.split_active = false
+			self.split_point = nil
+			return true
+		end
+	end
+
+	return false
 end
 
 function block_update(self)
@@ -122,12 +146,12 @@ function block_update(self)
 	elseif btnp(⬇️) then
 		d.v = 1
 	elseif btnp(🅾️) then
-	-- self.split_active = ~self.split_active
+		self.split_active = not self.split_active
 	end
 
-	if d.u != 0 then
-		if self.split_point != nil then
-			-- self.side = block_side.z
+	if d.u ~= 0 then
+		if self.split_point ~= nil then
+			new_side = block_side.z
 		elseif self.side == block_side.z then
 			if d.u < 0 then
 					d.u = -2
@@ -139,9 +163,9 @@ function block_update(self)
 			end
 			new_side = block_side.z
 		end
-	elseif d.v != 0 then
-		if self.split_point != nil then
-			-- self.side = block_side.z
+	elseif d.v ~= 0 then
+		if self.split_point ~= nil then
+			new_side = block_side.z
 		elseif self.side == block_side.z then
 			if d.v < 0 then
 				d.v = -2
@@ -150,43 +174,30 @@ function block_update(self)
 		elseif self.side == block_side.v then
 			if d.v > 0 then
 				d.v = 2
-			end 
+			end
 			new_side = block_side.z
 		end
 	end
 
 	if not d:is_zero() then
 		local point = self.point
-		if self.split_point != nil and self.split_active == 1 then
-			-- point = self.split_point
+		if self.split_point ~= nil and self.split_active then
+			point = self.split_point
 		end
 
-		self.prev_point = self.point
+		self.prev_point = point
 		self.prev_side = self.side
 
-		self.point = point:by_adding_point(d)
+		local new_point = point:by_adding_point(d)
 		self.side = new_side
+		if self.split_point ~= nil and self.split_active then
+			self.split_point = new_point
+		else
+			self.point = new_point
+		end
 
-		self.animation = make_block_transition_animation(self.prev_point, self.prev_side, self.point, self.side)
+		self.animation = make_block_transition_animation(self.prev_point, self.prev_side, new_point, self.side)
 	end
-
-	-- if self.split_point != nil then
-	-- 	local touches_u = self.point:touches_point_by_u(self.split_point)
-	-- 	local touches_v = self.point:touches_point_by_v(self.split_point)
-
-	-- 	if touches_u or touches_v then
-	-- 		self.split = false
-	-- 		self.updated = true
-
-	-- 		if touches_u then
-	-- 			self.side = block_side.u
-	-- 			self.point.u = min(self.point.u, self.split_point.u)
-	-- 		else
-	-- 			self.side = block_side.v
-	-- 			self.point.v = min(self.point.v, self.split_point.v)
-	-- 		end
-	-- 	end
-	-- end
 
 	return false
 end
@@ -202,7 +213,7 @@ function block_subdraw(self, draw_split)
 	local sprite = nil
 	local thin = false
 
-	if self.animation ~= nil and self.animation ~= false then
+	if self.animation ~= nil and draw_split == self.split_active then
 		local state = self.animation:get_state()
 		if state.side ~= nil then
 			side = state.side
@@ -244,8 +255,15 @@ function block_subdraw(self, draw_split)
 end
 
 function block_draw(self)
-	self:subdraw(false)
 	if self.split_point ~= nil then
-		self:subdraw(true)
+		local draw_split_first = false
+		if self.split_point.u > self.point.u or self.split_point.v < self.point.v then
+			draw_split_first = true
+		end
+
+		self:subdraw(draw_split_first)
+		self:subdraw(not draw_split_first)
+	else
+		self:subdraw(false)
 	end
 end

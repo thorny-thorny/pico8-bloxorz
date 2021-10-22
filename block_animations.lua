@@ -4,8 +4,6 @@ block_side = {
 	v = 2, -- location: [(u, v), (u, v + 1)]
 }
 
--- falling_animation_delay = 3
-
 function block_transition(from_point, from_side, to_point, to_side)
   local sprite = nil
   local d = make_xy_point(0, 0)
@@ -16,6 +14,7 @@ function block_transition(from_point, from_side, to_point, to_side)
   local v_to_z = to_side == block_side.z and from_side == block_side.v
   local v_to_v = to_side == block_side.v and from_side == block_side.v
   local u_to_u = to_side == block_side.u and from_side == block_side.u
+  local z_to_z = to_side == block_side.z and from_side == block_side.z -- splits
 
   local u_greater = to_point.u > from_point.u
   local v_greater = to_point.v > from_point.v
@@ -56,6 +55,18 @@ function block_transition(from_point, from_side, to_point, to_side)
   elseif u_to_u and not v_greater then
     sprite = 96
     d:add(0, -10)
+  elseif z_to_z and u_greater then
+    sprite = 98
+    d:add(-2, -8)
+  elseif z_to_z and not u_greater and to_point.u ~= from_point.u then
+    sprite = 100
+    d:add(-5, -11)
+  elseif z_to_z and v_greater then
+    sprite = 102
+    d:add(-1, -10)
+  elseif z_to_z and not v_greater and to_point.v ~= from_point.v then
+    sprite = 104
+    d:add(-4, -1)
   end
 
   return {

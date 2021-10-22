@@ -138,6 +138,10 @@ function level_update(self)
 		return false
 	end
 
+	if self.block:try_join() then
+		sfx(sounds.join)
+	end
+
 	local points = self.block:get_points()
 	local died = false
 	local got_sfx = false
