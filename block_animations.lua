@@ -226,3 +226,76 @@ function block_spin_fall_animation_get_state(self)
 
   return state
 end
+
+function make_block_teleport_animation(point)
+  local animation = {
+    point = point,
+    frames_left = 6,
+    dy = -4,
+    update = block_teleport_animation_update,
+    get_state = block_teleport_animation_get_state,
+    draw = block_teleport_animation_draw,
+  }
+
+  return animation
+end
+
+function block_teleport_animation_update(self)
+  if self.frames_left == 0 then
+    return false
+  else
+    self.frames_left -= 1
+    self.dy = min(0, self.dy + 2)
+    return true
+  end
+end
+
+function block_teleport_animation_get_state(self)
+  return {
+    d = make_xy_point(0, self.dy),
+    split = true,
+  }
+end
+
+function block_teleport_animation_draw(self)
+  draw_split_selection(self.point, make_xy_point(0, self.dy))
+end
+
+function draw_split_selection(point_uv, d)
+  local point = tile_point_to_xy(point_uv)
+  if d ~= nil then
+    point:add_point(d)
+  end
+
+  spr(50, point.x - 7, point.y - 3)
+  spr(51, point.x + 7, point.y - 3)
+end
+
+function make_block_switch_animation(point)
+  local animation = {
+    point = point,
+    frames_left = 6,
+    update = block_switch_animation_update,
+    get_state = block_switch_animation_get_state,
+    draw = block_switch_animation_draw,
+  }
+
+  return animation
+end
+
+function block_switch_animation_update(self)
+  if self.frames_left == 0 then
+    return nil
+  else
+    self.frames_left -= 1
+    return true
+  end
+end
+
+function block_switch_animation_get_state(self)
+  return {}
+end
+
+function block_switch_animation_draw(self)
+  draw_split_selection(self.point)
+end

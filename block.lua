@@ -90,14 +90,12 @@ function block_stands_on(self, point, whole)
 	return false
 end
 
-function block_split(self, u1, v1, u2, v2)
-	-- self.split = true
-	-- self.split_index = 0
-	-- self.side = block_side.z
-	-- self.u = u1
-	-- self.v = v1
-	-- self.u2 = u2
-	-- self.v2 = v2
+function block_split(self, point1, point2)
+	self.point = point1
+	self.split_point = point2
+	self.side = block_side.z
+
+	self.animation = make_block_teleport_animation(self.point)
 end
 
 function block_try_join(self)
@@ -116,11 +114,10 @@ function block_try_join(self)
 
 			self.split_active = false
 			self.split_point = nil
-			return true
+
+			sfx(sounds.join)
 		end
 	end
-
-	return false
 end
 
 function block_update(self)
@@ -130,7 +127,11 @@ function block_update(self)
 			return false
 		else
 			self.animation = nil
-			return true
+			if animating == nil then
+				return false
+			else
+				return true
+			end
 		end
 	end
 
@@ -146,7 +147,15 @@ function block_update(self)
 	elseif btnp(⬇️) then
 		d.v = 1
 	elseif btnp(🅾️) then
-		self.split_active = not self.split_active
+		if self.split_point ~= nil then
+			self.split_active = not self.split_active
+			local point = self.point
+			if self.split_active then
+				point = self.split_point
+			end
+
+			self.animation = make_block_switch_animation(point)
+		end
 	end
 
 	if d.u ~= 0 then
@@ -213,18 +222,20 @@ function block_subdraw(self, draw_split)
 	local sprite = nil
 	local thin = false
 
-	if self.animation ~= nil and draw_split == self.split_active then
+	if self.animation ~= nil then
 		local state = self.animation:get_state()
-		if state.side ~= nil then
-			side = state.side
-		end
+		if draw_split == self.split_active or state.split then
+			if state.side ~= nil then
+				side = state.side
+			end
 
-		if state.sprite ~= nil then
-			sprite = state.sprite
-		end
+			if state.sprite ~= nil then
+				sprite = state.sprite
+			end
 
-		if state.d ~= nil then
-			p:add_point(state.d)
+			if state.d ~= nil then
+				p:add_point(state.d)
+			end
 		end
 	end
 
@@ -254,16 +265,26 @@ function block_subdraw(self, draw_split)
 	end
 end
 
-function block_draw(self)
+function block_draw(self, falling_split)
 	if self.split_point ~= nil then
-		local draw_split_first = false
-		if self.split_point.u > self.point.u or self.split_point.v < self.point.v then
-			draw_split_first = true
-		end
+		if falling_split == nil then
+			local draw_split_first = false
+			if self.split_point.u > self.point.u or self.split_point.v < self.point.v then
+				draw_split_first = true
+			end
 
-		self:subdraw(draw_split_first)
-		self:subdraw(not draw_split_first)
-	else
+			self:subdraw(draw_split_first)
+			self:subdraw(not draw_split_first)
+		elseif falling_split == true then
+			self:subdraw(self.split_active)
+		elseif falling_split == false then
+			self:subdraw(not self.split_active)
+		end
+	elseif falling_split ~= false then
 		self:subdraw(false)
+	end
+
+	if self.animation and self.animation.draw then
+		self.animation:draw()
 	end
 end

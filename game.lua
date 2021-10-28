@@ -1,7 +1,7 @@
 function game_create()
 	local game = {
 		level_number = 1,
-		levels_total = 7,
+		levels_total = 11,
 		update = game_update,
 		draw = game_draw,
 	}

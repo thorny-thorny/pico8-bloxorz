@@ -79,8 +79,8 @@ end
 
 function level_enter_portal(self, sprite)
 	local index = sprite_index_bit(sprite)
-	local point1 = make_uv_point(-1, -1)
-	local point2 = make_uv_point(-1, -1)
+	local point1 = nil
+	local point2 = nil
 
 	for u = 0, map_width_tiles - 1 do
 		for v = 0, map_height_tiles - 1 do
@@ -96,7 +96,7 @@ function level_enter_portal(self, sprite)
 					sprite_index_bit(sprite) == index
 				)
 			then
-				if point1.u == -1 then
+				if point1 == nil then
 					point1 = make_uv_point(u, v)
 				else
 					point2 = make_uv_point(u, v)
@@ -105,7 +105,11 @@ function level_enter_portal(self, sprite)
 		end
 	end
 
-	self.block:split(self.block, point1.u, point1.v, point2.u, point2.v)
+	if point1 == nil or point2 == nil then
+		return
+	end
+
+	self.block:split(point1, point2)
 end
 
 function level_platform_state(self, sprite)
@@ -138,9 +142,7 @@ function level_update(self)
 		return false
 	end
 
-	if self.block:try_join() then
-		sfx(sounds.join)
-	end
+	self.block:try_join()
 
 	local points = self.block:get_points()
 	local died = false
@@ -165,10 +167,8 @@ function level_update(self)
 			hole_points[#hole_points + 1] = points[i]
 		elseif #points == 1 and self.finish:equals(points[i]) then
 			finished = true
-		-- elseif #points == 1 and sprite_is_portal(sprite) then
-			-- if self.block.updated then
-			-- 	self:enter_portal(sprite)
-			-- end
+		elseif #points == 1 and sprite_is_portal(sprite) then
+			self:enter_portal(sprite)
 		elseif
 			sprite_is_circle_button(sprite) or
 			(
@@ -226,35 +226,43 @@ function level_draw(self)
 		hole = self.hole
 	end
 
- for u = map_width_tiles - 1, 0, -1 do
-  for v = 0, map_height_tiles - 1 do
-		local is_hole = u == hole.u and v == hole.v
-  	if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) or is_hole then
-			local d = nil
-			if is_hole then
-				local sprite = mget(self.map_offset.u + hole.u, self.map_offset.v + hole.v)
-				if sprite_is_fragile(sprite) and self.waiting_for_animaiton and self.block.side == block_side.z then
-					local state = self.block.animation:get_state()
-					if state.d ~= nil then
-						d = make_xy_point(0, state.d.y)
+	for u = map_width_tiles - 1, 0, -1 do
+		for v = 0, map_height_tiles - 1 do
+			local is_hole = u == hole.u and v == hole.v
+			if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) or is_hole then
+				local d = nil
+				if is_hole then
+					local sprite = mget(self.map_offset.u + hole.u, self.map_offset.v + hole.v)
+					if sprite_is_fragile(sprite) and self.waiting_for_animaiton and self.block.side == block_side.z then
+						local state = self.block.animation:get_state()
+						if state.d ~= nil then
+							d = make_xy_point(0, state.d.y)
+						end
 					end
 				end
+
+				self:draw_tile(u, v, d)
 			end
+		end
+	end
 
-			self:draw_tile(u, v, d)
-  	end
- 	end
- end
+	if self.hole ~= nil then
+		self.block:draw(true)
+	else
+		self.block:draw()
+	end
 
- self.block:draw()
+	for u = map_width_tiles - 1, 0, -1 do
+		for v = 0, map_height_tiles - 1 do
+			if ((u > hole.u and v > hole.v) or (u <= hole.u and v >= hole.v)) and not (u == hole.u and v == hole.v) then
+				self:draw_tile(u, v)
+			end
+		end
+	end
 
- for u = map_width_tiles - 1, 0, -1 do
-  for v = 0, map_height_tiles - 1 do
-  	if ((u > hole.u and v > hole.v) or (u <= hole.u and v >= hole.v)) and not (u == hole.u and v == hole.v) then
-  		self:draw_tile(u, v)
-  	end
- 	end
- end
+	if self.hole ~= nil then
+		self.block:draw(false)
+	end
 end
 
 function level_draw_tile(self, u, v, d)
