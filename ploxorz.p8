@@ -10,17 +10,12 @@ __lua__
 #include block.lua
 #include level_animations.lua
 #include level.lua
-#include game.lua
+#include game_scene.lua
+#include menu_scene.lua
+#include scene_controller.lua
 
-game = game_create()
+show_menu()
 
-function _update()
-	game:update()
-end
-
-function _draw()
-	game:draw()
-end
 
 __gfx__
 00000000000666600006666000066660000dddd0000999900001115000066660000666600006666000066660000dddd0000dddd0000dddd0000dddd000066660

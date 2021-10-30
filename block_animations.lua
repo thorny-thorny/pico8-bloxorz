@@ -158,12 +158,13 @@ function block_fall_animation_get_state(self)
   }
 end
 
-function make_block_spin_fall_animation(from_point, from_side, to_point, to_side)
+function make_block_spin_fall_animation(from_point, from_side, to_point, to_side, endless)
   local animation = {
     from_point = from_point,
     from_side = from_side,
     to_point = to_point,
     to_side = to_side,
+    endless = endless,
     frames_left = 30,
     frame = 0,
     update = block_spin_fall_animation_update,
@@ -174,12 +175,17 @@ function make_block_spin_fall_animation(from_point, from_side, to_point, to_side
 end
 
 function block_spin_fall_animation_update(self)
-  if self.frames_left == 0 then
-    return false
-  else
-    self.frames_left -= 1
-    self.frame += 1
+  if self.endless == true then
+    self.frame = (self.frame + 1) % 8
     return true
+  else
+    if self.frames_left == 0 then
+      return false
+    else
+      self.frames_left -= 1
+      self.frame += 1
+      return true
+    end
   end
 end
 
@@ -222,7 +228,9 @@ function block_spin_fall_animation_get_state(self)
     }
   end
 
-  state.d:add(0, self.frame * 4)
+  if self.endless ~= true then
+    state.d:add(0, self.frame * 4)
+  end
 
   return state
 end

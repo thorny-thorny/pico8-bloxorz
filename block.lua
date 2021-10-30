@@ -1,5 +1,6 @@
-function block_create(u, v)
+function block_create(u, v, ignore_input)
 	local block = {
+		ignore_input = ignore_input,
 		point = make_uv_point(u, v),
 		side = block_side.z,
 		prev_point = nil,
@@ -31,6 +32,20 @@ function block_animate_finish(self)
 end
 
 function block_animate_falling(self, hole, hole_side)
+	if hole == nil then
+		-- endless falling for menu
+		self.side = block_side.z
+		self.animation = make_block_spin_fall_animation(
+			self.point,
+			block_side.u,
+			self.point:by_adding_point(make_uv_point(1, 0)),
+			block_side.z,
+			true
+		)
+
+		return
+	end
+
 	local d = make_uv_point(0, 0)
 
 	if self.side ~= block_side.z and hole_side == block_side.z then
@@ -138,23 +153,25 @@ function block_update(self)
 	local d = make_uv_point(0, 0)
 	local new_side = self.side
 
-	if btnp(⬅️) then
-		d.u = -1
-	elseif btnp(➡️) then
-		d.u = 1
-	elseif btnp(⬆️) then
-		d.v = -1
-	elseif btnp(⬇️) then
-		d.v = 1
-	elseif btnp(🅾️) then
-		if self.split_point ~= nil then
-			self.split_active = not self.split_active
-			local point = self.point
-			if self.split_active then
-				point = self.split_point
-			end
+	if self.ignore_input ~= false then
+		if btnp(⬅️) then
+			d.u = -1
+		elseif btnp(➡️) then
+			d.u = 1
+		elseif btnp(⬆️) then
+			d.v = -1
+		elseif btnp(⬇️) then
+			d.v = 1
+		elseif btnp(❎) then
+			if self.split_point ~= nil then
+				self.split_active = not self.split_active
+				local point = self.point
+				if self.split_active then
+					point = self.split_point
+				end
 
-			self.animation = make_block_switch_animation(point)
+				self.animation = make_block_switch_animation(point)
+			end
 		end
 	end
 
