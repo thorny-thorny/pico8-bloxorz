@@ -46,6 +46,6 @@ function menu_scene_draw(self)
     print('demake of bloxorz', 32, 66, 7)
     print('🅾️ to start', 44, 76, 7)
     print('❎ to switch (in game)', 22, 82, 7)
-    print('demo version 0.1.0', 30, 120, 7)
+    print('demo version 0.2.0', 30, 120, 7)
   end
 end
