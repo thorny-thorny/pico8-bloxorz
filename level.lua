@@ -1,14 +1,9 @@
-function level_create(level_number)
-	local map_offset = make_uv_point(
-		(level_number % 8) * map_width_tiles,
-		flr(level_number / 8) * map_height_tiles
-	)
-
+function level_create(map_offset, width, height, draw_offset, skip_animations)
 	local start = make_uv_point(0, 0)
 	local finish = make_uv_point(0, 0)
 
-	for u = 0, map_width_tiles - 1 do
-		for v = 0, map_height_tiles - 1 do
+	for u = 0, width - 1 do
+		for v = 0, height - 1 do
 			local sprite = mget(map_offset.u + u, map_offset.v + v)
 			if sprite_is_start(sprite) then
 				start = make_uv_point(u, v)
@@ -20,6 +15,10 @@ function level_create(level_number)
 
 	local level = {
 		map_offset = map_offset,
+		skip_animations = skip_animations,
+		width = width,
+		height = height,
+		draw_offset = draw_offset,
 		start = start,
 		finish = finish,
 		finished = false,
@@ -44,9 +43,13 @@ function level_reset(self)
 	self.platform_animation = nil
 	self.block = block_create(
 		self.start.u,
-		self.start.v
+		self.start.v,
+		nil,
+		self.draw_offset
 	)
-	self.block:animate_start()
+	if not self.skip_animations then
+		self.block:animate_start()
+	end
 end
 
 function level_press_button(self, sprite)
@@ -82,8 +85,8 @@ function level_enter_portal(self, sprite)
 	local point1 = nil
 	local point2 = nil
 
-	for u = 0, map_width_tiles - 1 do
-		for v = 0, map_height_tiles - 1 do
+	for u = 0, self.width - 1 do
+		for v = 0, self.height - 1 do
 			local sprite = mget(self.map_offset.u + u, self.map_offset.v + v)
 			if
 				sprite_is_portal_half(sprite) or
@@ -129,7 +132,7 @@ function level_platform_state(self, sprite)
 	end
 end
 
-function level_update(self)
+function level_update(self, emulate_key)
 	if self.platform_animation ~= nil then
 		local platform_animation_updated = self.platform_animation:update()
 		if not platform_animation_updated then
@@ -137,7 +140,7 @@ function level_update(self)
 		end
 	end
 
-	local block_updated = self.block:update()
+	local block_updated = self.block:update(emulate_key)
 	if not block_updated then
 		return false
 	end
@@ -152,7 +155,7 @@ function level_update(self)
 	for i = 1, #points do
 		local sprite = mget(self.map_offset.u + points[i].u, self.map_offset.v + points[i].v)
 		local empty_tile = sprite == 0
-		local out_of_bounds = not points[i]:in_bounds(0, 0, map_width_tiles - 1, map_height_tiles - 1)
+		local out_of_bounds = not points[i]:in_bounds(0, 0, self.width - 1, self.height - 1)
 		local fragile_tile = sprite_is_fragile(sprite)
 		local fragile_breaks = #points == 1 and fragile_tile
 		local off_platform = sprite_is_platform(sprite) and self:platform_state(sprite) < 0
@@ -221,13 +224,13 @@ function level_update(self)
 end
 
 function level_draw(self)
-	local hole = make_uv_point(map_width_tiles, map_height_tiles)
+	local hole = make_uv_point(self.width, self.height)
 	if self.hole ~= nil then
 		hole = self.hole
 	end
 
-	for u = map_width_tiles - 1, 0, -1 do
-		for v = 0, map_height_tiles - 1 do
+	for u = self.width - 1, 0, -1 do
+		for v = 0, self.height - 1 do
 			local is_hole = u == hole.u and v == hole.v
 			if (u > hole.u and v <= hole.v) or (u <= hole.u and v < hole.v) or is_hole then
 				local d = nil
@@ -252,8 +255,8 @@ function level_draw(self)
 		self.block:draw()
 	end
 
-	for u = map_width_tiles - 1, 0, -1 do
-		for v = 0, map_height_tiles - 1 do
+	for u = self.width - 1, 0, -1 do
+		for v = 0, self.height - 1 do
 			if ((u > hole.u and v > hole.v) or (u <= hole.u and v >= hole.v)) and not (u == hole.u and v == hole.v) then
 				self:draw_tile(u, v)
 			end
@@ -299,6 +302,9 @@ function level_draw_tile(self, u, v, d)
 
 		if sprite > 0 then
 			local point = tile_point_to_xy(make_uv_point(u, v))
+			if self.draw_offset ~= nil then
+				point:add_point(self.draw_offset)
+			end
 			if d ~= nil then
 				point:add_point(d)
 			end

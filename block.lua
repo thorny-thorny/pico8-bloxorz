@@ -1,6 +1,7 @@
-function block_create(u, v, ignore_input)
+function block_create(u, v, ignore_input, draw_offset)
 	local block = {
 		ignore_input = ignore_input,
+		draw_offset = draw_offset,
 		point = make_uv_point(u, v),
 		side = block_side.z,
 		prev_point = nil,
@@ -110,7 +111,7 @@ function block_split(self, point1, point2)
 	self.split_point = point2
 	self.side = block_side.z
 
-	self.animation = make_block_teleport_animation(self.point)
+	self.animation = make_block_teleport_animation(self.point, self.draw_offset)
 end
 
 function block_try_join(self)
@@ -135,7 +136,7 @@ function block_try_join(self)
 	end
 end
 
-function block_update(self)
+function block_update(self, emulate_key)
 	if self.animation ~= nil then
 		local animating = self.animation:update()
 		if animating then
@@ -153,16 +154,29 @@ function block_update(self)
 	local d = make_uv_point(0, 0)
 	local new_side = self.side
 
+	local left_pressed = btnp(⬅️)
+	local right_pressed = btnp(➡️)
+	local up_pressed = btnp(⬆️)
+	local down_pressed = btnp(⬇️)
+	local o_pressed = btnp(🅾️)
+	if emulate_key ~= nil then
+		left_pressed = emulate_key == ⬅️
+		right_pressed = emulate_key == ➡️
+		up_pressed = emulate_key == ⬆️
+		down_pressed = emulate_key == ⬇️
+		o_pressed = emulate_key == 🅾️
+	end
+
 	if self.ignore_input ~= false then
-		if btnp(⬅️) then
+		if left_pressed then
 			d.u = -1
-		elseif btnp(➡️) then
+		elseif right_pressed then
 			d.u = 1
-		elseif btnp(⬆️) then
+		elseif up_pressed then
 			d.v = -1
-		elseif btnp(⬇️) then
+		elseif down_pressed then
 			d.v = 1
-		elseif btnp(❎) then
+		elseif o_pressed then
 			if self.split_point ~= nil then
 				self.split_active = not self.split_active
 				local point = self.point
@@ -170,7 +184,7 @@ function block_update(self)
 					point = self.split_point
 				end
 
-				self.animation = make_block_switch_animation(point)
+				self.animation = make_block_switch_animation(point, self.draw_offset)
 			end
 		end
 	end
@@ -272,6 +286,10 @@ function block_subdraw(self, draw_split)
 			sprite = 67
 			p:add(-6, -4)
 		end
+	end
+
+	if self.draw_offset then
+		p:add_point(self.draw_offset)
 	end
 
 	spr(sprite, p.x, p.y)

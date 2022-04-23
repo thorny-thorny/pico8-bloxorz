@@ -4,6 +4,10 @@ function show_menu()
   scene = menu_scene_create()
 end
 
+function show_instructions()
+  scene = instructions_scene_create()
+end
+
 function show_game()
   scene = game_scene_create()
 end
