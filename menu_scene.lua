@@ -6,6 +6,9 @@ function menu_scene_create()
     title = title,
     letters_left = #title,
     frame = 0,
+    selection = 0,
+    selection_frame = 0,
+    selection_offset = 0,
     update = menu_scene_update,
     draw = menu_scene_draw,
     block = block_create(12, 5, true),
@@ -34,9 +37,31 @@ function menu_scene_update(self)
       self.wait_for_block_fall = false
       self.block:animate_falling()
     else
-      if btnp(🅾️) then
-        show_instructions()
+      local d_selection = 0
+      if btnp(⬇️) then
+        d_selection = 1
+      elseif btnp(⬆️) then
+        d_selection = -1
       end
+      
+      self.selection = (self.selection + 2 + d_selection) % 2
+
+      if btnp(🅾️) or btnp(❎) then
+        if self.selection == 0 then
+          show_instructions()
+        elseif self.selection == 1 then
+          show_code()
+        end
+      end
+    end
+  end
+
+  self.selection_frame += 1
+  if self.selection_frame >= 3 then
+    self.selection_frame = 0
+    self.selection_offset += 1
+    if self.selection_offset > 4 then
+      self.selection_offset = 0
     end
   end
 end
@@ -53,7 +78,11 @@ function menu_scene_draw(self)
   self.block:draw()
 
   if not self.wait_for_block_fall then
-    print('demake of bloxorz', 32, 66, 7)
-    print('🅾️ to start', 44, 76, 7)
+    print('start', 44, 66, 7)
+    print('enter passcode', 44, 74, 7)
+    print('bloxorz demake by thorny', 16, 102, 6)
+    print('original game by dxinteractive', 4, 110, 6)
+
+    print('▶', 34 + self.selection_offset, 66 + 8 * self.selection, 7)
   end
 end

@@ -15,6 +15,7 @@ __lua__
 #include menu_scene.lua
 #include playback.lua
 #include instructions_scene.lua
+#include code_scene.lua
 #include scene_controller.lua
 
 show_menu()
